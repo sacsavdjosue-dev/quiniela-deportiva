@@ -10,6 +10,14 @@ const app=express();app.disable('x-powered-by');app.set('trust proxy',1);
 const port=Number(process.env.PORT||3000);
 const password=process.env.ADMIN_PASSWORD,secret=process.env.SESSION_SECRET;
 if(!password||password.length<12||!secret||secret.length<32||!process.env.DATABASE_URL){console.error('Configure ADMIN_PASSWORD (12+), SESSION_SECRET (32+) y DATABASE_URL.');process.exit(1)}
+const dbUrl = new URL(process.env.DATABASE_URL);
+
+console.log('DIAGNÓSTICO POSTGRESQL:', {
+  usuario: dbUrl.username,
+  puerto: dbUrl.port,
+  sessionPooler: dbUrl.hostname.endsWith('.pooler.supabase.com'),
+  passwordConfigurada: dbUrl.password.length > 0
+});
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
