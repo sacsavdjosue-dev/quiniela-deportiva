@@ -3,13 +3,24 @@ import pg from 'pg';
 import helmet from 'helmet';
 import {rateLimit} from 'express-rate-limit';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
 import path from 'node:path';
 
 const app=express();app.disable('x-powered-by');app.set('trust proxy',1);
 const port=Number(process.env.PORT||3000);
 const password=process.env.ADMIN_PASSWORD,secret=process.env.SESSION_SECRET;
 if(!password||password.length<12||!secret||secret.length<32||!process.env.DATABASE_URL){console.error('Configure ADMIN_PASSWORD (12+), SESSION_SECRET (32+) y DATABASE_URL.');process.exit(1)}
-const pool=new pg.Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.DB_SSL==='disable'?false:{rejectUnauthorized:true},max:5});
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    ca: fs.readFileSync(
+      '/etc/secrets/supabase-ca.crt',
+      'utf8'
+    ),
+    rejectUnauthorized: true
+  },
+  max: 5
+});
 const teams=[['Necaxa','Juárez'],['Atlante','San Luis'],['León','Toluca'],['Monterrey','Chivas'],['Pumas','Tigres'],['Atlas','Puebla'],['América','Pachuca'],['Querétaro','Cruz Azul'],['Tijuana','Santos'],['Barcelona','Real Madrid'],['Sevilla','Osasuna']].map(t=>({home:t[0],away:t[1],homeLogo:'',awayLogo:''}));
 await pool.query(`CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY CHECK(id=1), json JSONB NOT NULL);
 CREATE TABLE IF NOT EXISTS bets (id BIGSERIAL PRIMARY KEY, folio TEXT NOT NULL UNIQUE, name TEXT NOT NULL, round TEXT NOT NULL, selections JSONB NOT NULL, combinations JSONB NOT NULL, count INTEGER NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pendiente' CHECK(status IN ('pendiente','recibida','pagada','validada')), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
