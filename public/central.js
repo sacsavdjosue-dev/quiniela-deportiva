@@ -18,3 +18,34 @@ function exportBets(){const header=['Folio','Participante','Jornada','Estado','C
 const mainButton=document.querySelector('#user button.primary');mainButton.textContent='REGISTRAR QUINIELA Y PREPARAR WHATSAPP';mainButton.insertAdjacentHTML('afterend','<p id="sendStatus" class="hint" role="status"></p><a id="whatsappLink" class="hidden" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;background:#00a86b;color:white;padding:12px;border-radius:9px;font-weight:800;text-decoration:none">ABRIR WHATSAPP</a>');
 document.head.insertAdjacentHTML('beforeend','<style>#whatsappLink.hidden{display:none!important}button:disabled{opacity:.55;cursor:not-allowed}</style>');
 syncConfig();
+
+// Cierre de jornada: se configura en el servidor y no depende del reloj del cliente.
+function renderClosingControls(){
+  const panel=document.getElementById('adminContent');
+  if(!panel||document.getElementById('aCloseAt'))return;
+  const box=document.createElement('div');box.className='admin-row';
+  box.innerHTML=`<h3>Cierre automático de jornada</h3><label>Fecha y hora con zona horaria (ISO 8601)</label><input id="aCloseAt" placeholder="2026-10-25T16:00:00-06:00" value="${safe(cfg.closeAt||'')}"><p class="hint">Ejemplo México centro: 2026-10-25T16:00:00-06:00. Dejar vacío significa sin cierre automático.</p><label><input id="aClosed" type="checkbox" ${cfg.closed?'checked':''} style="width:auto"> Cerrar jornada manualmente ahora</label><p class="hint">Al vencer el plazo o cerrar manualmente, se rechazan nuevas participaciones. Los registros existentes permanecen.</p>`;
+  panel.insertBefore(box,panel.firstChild);
+}
+const previousAdminRenderClosing=adminRender;
+adminRender=function(){previousAdminRenderClosing();if(unlocked)renderClosingControls()};
+const previousSaveAdminClosing=saveAdmin;
+saveAdmin=async function(){
+  const closeAt=document.getElementById('aCloseAt')?.value.trim()||'';
+  if(closeAt&&!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:\d{2})$/.test(closeAt))return alert('Usa fecha con zona horaria: 2026-10-25T16:00:00-06:00');
+  if(closeAt&&!Number.isFinite(Date.parse(closeAt)))return alert('Fecha de cierre inválida');
+  cfg.closeAt=closeAt;cfg.closed=!!document.getElementById('aClosed')?.checked;
+  await previousSaveAdminClosing();
+};
+function refreshClosingStatus(){
+  const el=document.getElementById('sendStatus');
+  const button=document.querySelector('#user button.primary');
+  if(!el||!button||!centralReady)return;
+  const closed=cfg.closed===true||Boolean(cfg.closeAt&&Date.now()>=Date.parse(cfg.closeAt));
+  if(closed){button.disabled=true;el.textContent='JORNADA CERRADA. Ya no se aceptan participaciones.';}
+  else if(cfg.closeAt){el.textContent='Cierre programado: '+new Date(cfg.closeAt).toLocaleString('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'})+' (Ciudad de México).';}
+}
+const previousSyncConfigClosing=syncConfig;
+syncConfig=async function(){await previousSyncConfigClosing();refreshClosingStatus()};
+// El servidor es la autoridad definitiva; esta comprobación solo informa al usuario.
+setInterval(refreshClosingStatus,15000);
