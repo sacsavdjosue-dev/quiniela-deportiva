@@ -37,14 +37,40 @@ saveAdmin=async function(){
   cfg.closeAt=closeAt;cfg.closed=!!document.getElementById('aClosed')?.checked;
   await previousSaveAdminClosing();
 };
-function refreshClosingStatus(){
-  const el=document.getElementById('sendStatus');
-  const button=document.querySelector('#user button.primary');
-  if(!el||!button||!centralReady)return;
-  const closed=cfg.closed===true||Boolean(cfg.closeAt&&Date.now()>=Date.parse(cfg.closeAt));
-  if(closed){button.disabled=true;el.textContent='JORNADA CERRADA. Ya no se aceptan participaciones.';}
-  else if(cfg.closeAt){el.textContent='Cierre programado: '+new Date(cfg.closeAt).toLocaleString('es-MX',{timeZone:'America/Mexico_City',dateStyle:'medium',timeStyle:'short'})+' (Ciudad de México).';}
+
+function refreshClosingStatus() {
+  const el = document.getElementById('sendStatus');
+  const button = document.querySelector('#user button.primary');
+
+  if (!el || !button || !centralReady) return;
+
+  const closed = cfg.closed === true ||
+    Boolean(cfg.closeAt && Date.now() >= Date.parse(cfg.closeAt));
+
+  if (closed) {
+    button.disabled = true;
+    el.textContent =
+      'JORNADA CERRADA. Ya no se aceptan participaciones.';
+    return;
+  }
+
+  // Si la jornada está abierta, permitir nuevamente el registro.
+  if (button.textContent !== 'REGISTRANDO...') {
+    button.disabled = false;
+  }
+
+  if (cfg.closeAt) {
+    el.textContent = 'Cierre programado: ' +
+      new Date(cfg.closeAt).toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        dateStyle: 'medium',
+        timeStyle: 'short'
+      }) + ' (Ciudad de México).';
+  } else if (el.textContent.startsWith('JORNADA CERRADA')) {
+    el.textContent = '';
+  }
 }
+
 const previousSyncConfigClosing=syncConfig;
 syncConfig=async function(){await previousSyncConfigClosing();refreshClosingStatus()};
 // El servidor es la autoridad definitiva; esta comprobación solo informa al usuario.
