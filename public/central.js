@@ -81,3 +81,47 @@ const previousSyncConfigClosing=syncConfig;
 syncConfig=async function(){await previousSyncConfigClosing();refreshClosingStatus()};
 // El servidor es la autoridad definitiva; esta comprobación solo informa al usuario.
 setInterval(refreshClosingStatus,15000);
+
+
+// JORNADAS_V1: selector administrativo de jornadas e historial.
+let roundsList=[];
+let selectedRoundId='';
+const priorAdminRenderRounds=adminRender;
+adminRender=function(){priorAdminRenderRounds();if(unlocked){
+ const panel=document.getElementById('adminContent');
+ const section=document.createElement('section');section.className='admin-row';
+ section.innerHTML=`<h3>Administracion de jornadas</h3><p class="hint">Crea una jornada cerrada, activala y despues configura sus partidos y fecha de cierre. Las jornadas anteriores conservan sus quinielas.</p><label>Nombre de la nueva jornada</label><input id="newRoundName" maxlength="120" placeholder="Ejemplo: Jornada 2"><button class="secondary" type="button" onclick="createRound()">CREAR JORNADA</button><div id="roundsTable" style="margin-top:12px"></div><label>Historial del registro central</label><select id="historyRound" onchange="selectedRoundId=this.value;paintBets()" style="width:100%;padding:9px"><option value="">Todas las jornadas</option></select>`;
+ panel.insertBefore(section,panel.firstChild);loadRounds();
+}};
+async function loadRounds(){try{
+ roundsList=await request('/api/admin/rounds');
+ const list=document.getElementById('roundsTable'),filter=document.getElementById('historyRound');if(!list||!filter)return;
+ list.replaceChildren();filter.replaceChildren();const all=document.createElement('option');all.value='';all.textContent='Todas las jornadas';filter.append(all);
+ for(const round of roundsList){
+   const row=document.createElement('div');row.className='admin-row';
+   const name=document.createElement('strong');name.textContent=round.name+(round.is_active?' · ACTIVA':'');
+   const stats=document.createElement('p');stats.className='hint';stats.textContent=round.bets_count+' registros · $'+Number(round.amount_total).toLocaleString('es-MX')+' MXN registrados';
+   row.append(name,stats);
+   if(!round.is_active){const button=document.createElement('button');button.className='outline';button.type='button';button.textContent='ACTIVAR JORNADA';button.onclick=()=>activateRound(round.id,round.name);row.append(button)}
+   list.append(row);
+   const option=document.createElement('option');option.value=String(round.id);option.textContent=round.name+' (#'+round.id+')';filter.append(option);
+ }
+ filter.value=selectedRoundId; if(filter.value!==selectedRoundId){selectedRoundId='';filter.value=''}
+ paintBets();
+}catch(e){const el=document.getElementById('roundsTable');if(el)el.textContent='Error cargando jornadas: '+e.message}}
+async function createRound(){const name=document.getElementById('newRoundName')?.value.trim();if(!name)return alert('Escribe el nombre de la jornada');
+ if(!confirm('Crear la jornada "'+name+'"? Se creara cerrada y no sustituira la jornada activa.'))return;
+ try{await request('/api/admin/rounds',{method:'POST',body:JSON.stringify({name})});document.getElementById('newRoundName').value='';await loadRounds();alert('Jornada creada. Actívala cuando estés listo para configurarla.')}catch(e){alert(e.message)}
+}
+async function activateRound(id,name){if(!confirm('¿Activar "'+name+'"? La jornada actual dejara de estar visible para los participantes. Las participaciones antiguas se conservaran.'))return;
+ try{await request('/api/admin/rounds/'+id+'/activate',{method:'POST'});location.reload()}catch(e){alert(e.message)}
+}
+const priorPaintBetsRounds=paintBets;
+paintBets=function(){priorPaintBetsRounds();const table=document.getElementById('betTable');if(!table||!selectedRoundId)return;
+ // Filtrar tarjetas sin modificar los registros almacenados.
+ const filtered=bets.filter(b=>String(b.round_id)===selectedRoundId &&
+ (!document.getElementById('betStatus')?.value||b.status===document.getElementById('betStatus').value)&&
+ (!document.getElementById('betSearch')?.value||(b.folio+' '+b.name).toLowerCase().includes(document.getElementById('betSearch').value.toLowerCase())));
+ const summary=document.getElementById('betSummary');if(summary)summary.textContent=`${filtered.length} registros · ${filtered.reduce((n,b)=>n+b.count,0)} combinaciones · $${filtered.reduce((n,b)=>n+b.amount,0).toLocaleString('es-MX')} MXN (importe registrado)`;
+ const cards=Array.from(table.children);const visible=new Set(filtered.map(b=>b.folio));for(const card of cards){const title=card.querySelector('b');if(title)card.hidden=!Array.from(visible).some(f=>title.textContent.startsWith(f+' · '))}
+};
