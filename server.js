@@ -34,6 +34,10 @@ await pool.query(`CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY CHEC
 CREATE TABLE IF NOT EXISTS bets (id BIGSERIAL PRIMARY KEY, folio TEXT NOT NULL UNIQUE, name TEXT NOT NULL, round TEXT NOT NULL, selections JSONB NOT NULL, combinations JSONB NOT NULL, count INTEGER NOT NULL, amount INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pendiente' CHECK(status IN ('pendiente','recibida','pagada','validada')), created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now());
 CREATE INDEX IF NOT EXISTS bets_status_created ON bets(status,created_at);
 ALTER TABLE bets ADD COLUMN IF NOT EXISTS contact_phone TEXT;`);
+// ANTI_DUPLICADOS_V1: clave idempotente persistente (NULL para apuestas antiguas).
+await pool.query(`ALTER TABLE bets ADD COLUMN IF NOT EXISTS submission_key UUID;
+ALTER TABLE bets ADD COLUMN IF NOT EXISTS submission_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS bets_submission_key_unique ON bets(submission_key);`);
 await pool.query('INSERT INTO config(id,json) VALUES(1,$1) ON CONFLICT(id) DO NOTHING',[JSON.stringify({title:'QUINIELA DEPORTIVA',round:'Jornada 1',deadline:'Cierre por definir',phone:'',cost:20,matchCount:11,teams})]);
 
 // JORNADAS_V1: migracion conservadora; nunca borra registros existentes.
@@ -78,7 +82,61 @@ const getConfig=async()=> (await pool.query('SELECT json FROM config WHERE id=1'
 app.get('/api/config',async(req,res,next)=>{try{const c=await getConfig();res.set('Cache-Control','no-store');res.json({...c,isClosed:isClosed(c),serverNow:new Date().toISOString()})}catch(e){next(e)}});
 app.put('/api/config',requireAdmin,async(req,res,next)=>{try{const c=req.body;if(!c||!validCloseAt(c.closeAt??'')||(c.closed!==undefined&&typeof c.closed!=='boolean')||![10,11].includes(c.matchCount)||!Array.isArray(c.teams)||c.teams.length!==c.matchCount||!Number.isInteger(Number(c.cost))||Number(c.cost)<1||Number(c.cost)>10000||typeof c.phone!=='string'||!/^[\d+\s()-]{0,25}$/.test(c.phone)||!['title','round','deadline'].every(k=>typeof c[k]==='string'&&c[k].length<=120)||!c.teams.every(t=>['home','away'].every(k=>typeof t[k]==='string'&&t[k].trim().length>0&&t[k].length<=80)&&['homeLogo','awayLogo'].every(k=>typeof t[k]==='string'&&(t[k]===''||/^data:image\/(webp|png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(t[k]))&&t[k].length<160000)))return res.status(400).json({error:'Configuración inválida'});const client=await pool.connect();try{await client.query('BEGIN');await client.query('SELECT pg_advisory_xact_lock(6729381)');await client.query('UPDATE config SET json=$1 WHERE id=1',[JSON.stringify(c)]);await client.query('UPDATE rounds SET name=$1,config=$2 WHERE is_active=true',[c.round,JSON.stringify(c)]);await client.query('COMMIT')}catch(e){await client.query('ROLLBACK');throw e}finally{client.release()}res.json({ok:true})}catch(e){next(e)}});
 function expand(selections){let rows=[''];for(const group of selections){const next=[];for(const prefix of rows)for(const pick of ['L','E','V'])if(group.includes(pick))next.push(prefix+pick);rows=next;if(rows.length>5000)throw Error('Se excede el límite de 5,000 combinaciones')}return rows}
-app.post('/api/bets',async(req,res,next)=>{try{const c=await getConfig(),{name,selections,round,contactPhone}=req.body||{};const normalizedContactPhone=typeof contactPhone==='string'?contactPhone.replace(/\D/g,''):'';if(isClosed(c))return res.status(403).json({error:'La jornada está cerrada. Ya no se aceptan quinielas.'});if(typeof name!=='string'||!name.trim()||name.trim().length>80||!/^\d{10}$/.test(normalizedContactPhone)||round!==c.round||!Array.isArray(selections)||selections.length!==c.matchCount||!selections.every(p=>Array.isArray(p)&&p.length>=1&&p.length<=3&&new Set(p).size===p.length&&p.every(x=>['L','E','V'].includes(x))))return res.status(400).json({error:'Datos inválidos o jornada modificada; actualiza la página'});const rows=expand(selections),amount=rows.length*c.cost,activeRound=(await pool.query('SELECT id FROM rounds WHERE is_active=true')).rows[0];if(!activeRound)return res.status(503).json({error:'No hay jornada activa'});const folio='Q'+Date.now().toString(36).toUpperCase()+crypto.randomBytes(4).toString('hex').toUpperCase();await pool.query('INSERT INTO bets(folio,name,round,selections,combinations,count,amount,round_id,contact_phone) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[folio,name.trim(),c.round,JSON.stringify(selections),JSON.stringify(rows),rows.length,amount,activeRound.id,normalizedContactPhone]);res.status(201).json({folio,rows,amount,count:rows.length,status:'pendiente',phone:c.phone,title:c.title,round:c.round,cost:c.cost})}catch(e){if(e.message?.includes('5,000'))return res.status(400).json({error:e.message});next(e)}});
+// ANTI_DUPLICADOS_V1: misma solicitud => mismo folio, aun con reintentos simultaneos.
+const submissionHash=({name,contactPhone,round,selections})=>
+ crypto.createHash('sha256').update(JSON.stringify({name,contactPhone,round,selections})).digest('hex');
+const existingBet=key=>pool.query(`SELECT b.*,r.config AS round_config
+ FROM bets b LEFT JOIN rounds r ON r.id=b.round_id WHERE b.submission_key=$1`,[key]);
+const betResponse=(b,activeCfg,alreadyRegistered)=>{
+ const savedCfg=b.round_config||activeCfg||{};
+ return {folio:b.folio,rows:b.combinations,count:b.count,amount:b.amount,
+  status:b.status,phone:savedCfg.phone||activeCfg?.phone||'',
+  title:savedCfg.title||activeCfg?.title||'QUINIELA DEPORTIVA',
+  round:b.round,cost:Number(b.amount)/Number(b.count),alreadyRegistered};
+};
+app.post('/api/bets',async(req,res,next)=>{try{
+ const {name,selections,round,contactPhone,submissionKey}=req.body||{};
+ const normalizedName=typeof name==='string'?name.trim():'';
+ const normalizedContactPhone=typeof contactPhone==='string'?contactPhone.replace(/\D/g,''):'';
+ if(typeof submissionKey!=='string'||
+  !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(submissionKey))
+  return res.status(400).json({error:'Actualiza la página para registrar tu quiniela (identificador de solicitud ausente).'});
+ if(!normalizedName||normalizedName.length>80||!/^\d{10}$/.test(normalizedContactPhone)||
+  typeof round!=='string'||!Array.isArray(selections)||selections.length<1||selections.length>11||
+  !selections.every(p=>Array.isArray(p)&&p.length>=1&&p.length<=3&&
+   new Set(p).size===p.length&&p.every(x=>['L','E','V'].includes(x))))
+  return res.status(400).json({error:'Datos de la quiniela inválidos.'});
+ const payload={name:normalizedName,contactPhone:normalizedContactPhone,round,selections};
+ const hash=submissionHash(payload);
+ // Buscar PRIMERO: un reintento recupera su folio aunque la jornada ya haya cerrado.
+ const previous=await existingBet(submissionKey);
+ if(previous.rowCount){
+  if(previous.rows[0].submission_hash!==hash)
+   return res.status(409).json({error:'El identificador pertenece a otra quiniela. Actualiza la página.'});
+  return res.status(200).json(betResponse(previous.rows[0],await getConfig(),true));
+ }
+ const c=await getConfig();
+ if(isClosed(c))return res.status(403).json({error:'La jornada está cerrada. Ya no se aceptan quinielas.'});
+ if(round!==c.round||selections.length!==c.matchCount)
+  return res.status(400).json({error:'La jornada cambió. Actualiza la página.'});
+ const rows=expand(selections),amount=rows.length*c.cost;
+ const activeRound=(await pool.query('SELECT id FROM rounds WHERE is_active=true')).rows[0];
+ if(!activeRound)return res.status(503).json({error:'No hay jornada activa'});
+ const folio='Q'+Date.now().toString(36).toUpperCase()+crypto.randomBytes(4).toString('hex').toUpperCase();
+ const inserted=await pool.query(`INSERT INTO bets
+  (folio,name,round,selections,combinations,count,amount,round_id,contact_phone,submission_key,submission_hash)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  ON CONFLICT (submission_key) DO NOTHING RETURNING *`,
+  [folio,normalizedName,c.round,JSON.stringify(selections),JSON.stringify(rows),rows.length,amount,
+   activeRound.id,normalizedContactPhone,submissionKey,hash]);
+ if(inserted.rowCount)return res.status(201).json(betResponse(inserted.rows[0],c,false));
+ // Si dos solicitudes llegaron al mismo tiempo, ganó la primera: devolver su folio.
+ const winning=await existingBet(submissionKey);
+ if(!winning.rowCount)throw Error('No se pudo recuperar el registro idempotente');
+ if(winning.rows[0].submission_hash!==hash)
+  return res.status(409).json({error:'El identificador pertenece a otra quiniela.'});
+ res.status(200).json(betResponse(winning.rows[0],c,true));
+}catch(e){if(e.message?.includes('5,000'))return res.status(400).json({error:e.message});next(e)}});
 // Administracion de jornadas: solo accesible a administrador autenticado.
 app.get('/api/admin/rounds',requireAdmin,async(req,res,next)=>{try{
  const r=await pool.query(`SELECT r.id,r.name,r.is_active,r.created_at,
