@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es-MX">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1455">
+<title>Medios de pago | Quiniela Deportiva</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#18243c;background:#edf2fa}
+*{box-sizing:border-box}body{margin:0}main{max-width:680px;margin:30px auto;padding:0 16px 32px}
+header{background:linear-gradient(135deg,#11165a,#253b90);border-radius:16px;padding:28px 24px;color:#fff}
+header h1{font-size:26px;margin:6px 0}header p{margin:0;color:#dce6ff}
+section{background:white;border-radius:14px;padding:22px;margin-top:16px;box-shadow:0 3px 16px #14255212}
+h2{font-size:19px;margin:0 0 16px}dl{margin:0}dt{font-size:13px;color:#65728a;margin-top:16px}dd{margin:5px 0 0;font-size:18px;font-weight:700;overflow-wrap:anywhere}
+.copy{background:#edf2ff;color:#1c3685;border:1px solid #c8d4ff;border-radius:8px;padding:7px 12px;margin-top:7px;cursor:pointer;font-weight:650}
+.note{border-left:4px solid #ff9a24;background:#fff7e8;padding:14px 16px;border-radius:8px;line-height:1.5}
+li{margin:10px 0;line-height:1.45}a.back{display:inline-block;margin-top:20px;color:#203b90;font-weight:700;text-decoration:none}
+footer{font-size:12px;color:#69778e;text-align:center;margin-top:20px}
+</style>
+</head>
+<body><main>
+<header><p>⚽ QUINIELA DEPORTIVA</p><h1>Medios de pago</h1><p>Transferencia bancaria y depósito BBVA</p></header>
+<section><h2>Datos para realizar tu pago</h2>
+<dl>
+<dt>Banco</dt><dd>BBVA</dd>
+<dt>Beneficiario</dt><dd>Josue Ramirez</dd>
+<dt>CLABE interbancaria · Transferencias</dt><dd id="clabe">012180011621017502</dd><button class="copy" type="button" data-copy="clabe">Copiar CLABE</button>
+<dt>Número de tarjeta · Consulta con BBVA la disponibilidad para depósitos</dt><dd id="tarjeta">4152 3141 5796 6097</dd><button class="copy" type="button" data-copy="tarjeta">Copiar tarjeta</button>
+</dl></section>
+<section><h2>¿Cómo confirmar tu pago?</h2>
+<ol><li>Consulta el importe total de tu quiniela en el mensaje de WhatsApp.</li><li>Realiza tu transferencia o depósito usando los datos indicados.</li><li>Envía la <strong>fotografía o captura de tu comprobante al mismo chat de WhatsApp</strong> donde enviaste tu quiniela.</li><li>Indica únicamente el <strong>nombre con el que registraste tu quiniela</strong> para identificar tu pago. No es necesario proporcionar el folio.</li></ol>
+<p class="note"><strong>Importante:</strong> el registro de la quiniela y el envío del comprobante no implican confirmación automática. El administrador debe validar la recepción y el pago.</p>
+<a class="back" href="/">← Regresar a Quiniela Deportiva</a></section>
+<footer>Verifica que el beneficiario y el importe sean correctos antes de pagar.</footer>
+</main>
+<script>
+document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{
+const value=document.getElementById(b.dataset.copy).textContent.replace(/\s/g,'');
+try{await navigator.clipboard.writeText(value);const old=b.textContent;b.textContent='Copiado';setTimeout(()=>b.textContent=old,1700)}catch{b.textContent='Selecciona y copia el número';}
+}));
+</script></body></html>
