@@ -166,4 +166,4 @@ await installPayments(app,pool,requireAdmin);
 app.get('/api/health',(req,res)=>res.json({ok:true}));
 app.use(express.static(path.join(process.cwd(),'public')));app.get('*',(req,res)=>res.sendFile(path.join(process.cwd(),'public','index.html')));
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Error interno del servidor'})});
-app.listen(port,()=>console.log(`Quiniela central en puerto ${port}`));
+app.listen(port,'0.0.0.0',()=>console.log(`Quiniela central en puerto ${port} (IPv4)`));
