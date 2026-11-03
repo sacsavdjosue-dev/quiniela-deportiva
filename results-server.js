@@ -1,3 +1,5 @@
+import {reconcileRankingPayments} from './results-payment-reconcile.js';
+// CONCILIACION_PAGOS_GANADORES_V2
 // RESULTADOS_GANADORES_V1
 // Captura administrativa por jornada, comodin y clasificacion publica sin datos financieros.
 // Esta extension no altera bets, bet_payments, rounds ni el mecanismo de registro.
@@ -224,6 +226,28 @@ export async function installResults(app, pool, requireAdmin) {
       const settings = responseSettings(round, await loadSaved(pool, id));
       const ranking = await calculateRanking(pool, id, settings);
       res.set('Cache-Control', 'no-store'); res.json({...settings, ...ranking});
+    } catch (e) { next(e); }
+  });
+
+  // CONCILIACION_PAGOS_GANADORES_V2: endpoint exclusivo para el panel de pagos.
+  app.get('/api/admin/results/:id/payment-review', requireAdmin, async (req, res, next) => {
+    try {
+      const id = validRoundId(req.params.id);
+      if (!id) return res.status(400).json({error: 'Jornada invalida'});
+      const round = await loadRound(pool, id);
+      if (!round) return res.status(404).json({error: 'Jornada no encontrada'});
+      const settings = responseSettings(round, await loadSaved(pool, id));
+      const ranking = await calculateRanking(pool, id, settings);
+      // Estados antiguos de apuestas NO equivalen a un abono bancario.
+      const payments = await pool.query(`SELECT b.folio,b.amount::bigint*100 AS required_cents,
+        b.status AS legacy_status,
+        COALESCE(SUM(p.amount_cents) FILTER (WHERE p.state='validado'),0)::bigint AS validated_cents,
+        COALESCE(SUM(p.amount_cents) FILTER (WHERE p.state='pendiente'),0)::bigint AS reviewing_cents
+        FROM bets b LEFT JOIN bet_payments p ON p.bet_id=b.id
+        WHERE b.round_id=$1 GROUP BY b.id,b.folio,b.amount,b.status`,[id]);
+      const paymentReview = reconcileRankingPayments(ranking, payments.rows);
+      res.set('Cache-Control','no-store');
+      res.json({...settings,...ranking,paymentReview});
     } catch (e) { next(e); }
   });
 

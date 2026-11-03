@@ -1,4 +1,5 @@
 // RESULTADOS_GANADORES_V1: la pagina publica nunca consulta rutas administrativas.
+// CONCILIACION_PAGOS_GANADORES_V2: aviso sobre verificacion administrativa.
 (() => {
 'use strict';
 const el=id=>document.getElementById(id);
@@ -48,7 +49,7 @@ async function loadPublicResults(id){
   const win=el('winnerMessage');win.hidden=true;win.replaceChildren();
   if(data.status==='final'&&data.leaders.length&&data.scoredMatches>0){
    win.className='winner';
-   win.textContent='🏆 Primer lugar: '+data.leaders.map(x=>x.participant+' ('+x.folio+')').join(', ');
+   win.textContent='🏆 Primer lugar deportivo por aciertos (sujeto a las bases del concurso): '+data.leaders.map(x=>x.participant+' ('+x.folio+')').join(', ');
    win.hidden=false;
   }
   if(data.requiresManualReview){

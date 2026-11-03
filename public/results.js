@@ -1,4 +1,5 @@
 // RESULTADOS_GANADORES_V1: configuracion de marcadores y clasificacion.
+// CONCILIACION_PAGOS_GANADORES_V2: el dinero solo se muestra en /admin/pagos.
 // Solo se instala dentro del panel de configuracion autenticado.
 (() => {
 'use strict';
@@ -193,7 +194,7 @@ function renderRankingResults(data) {
     return;
   }
   if (data.status === 'final' && data.leaders.length) {
-    parent.append(resultsText('p', '🏆 Primer lugar: ' +
+    parent.append(resultsText('p', '🏆 Primer lugar deportivo por aciertos: ' +
       data.leaders.map(x => x.participant + ' (' + x.folio + ')').join(', '), 'results-winners'));
   }
   for (const entry of data.rankings) {
