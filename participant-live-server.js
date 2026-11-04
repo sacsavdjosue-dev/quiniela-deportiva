@@ -90,3 +90,6 @@ export function installParticipantLive(app,pool) {
     } catch(error){next(error)}
   });
 }
+
+// RESPALDO_Y_DEPURACION_JORNADAS_V1: limpiar caché cuando una jornada fue borrada.
+export function invalidateLiveRoundCache(id){leaderboardCache.delete(Number(id));}
