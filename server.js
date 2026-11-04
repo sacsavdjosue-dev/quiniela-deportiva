@@ -8,6 +8,7 @@ import path from 'node:path';
 import {installPayments} from './payments-server.js';
 import {installResults} from './results-server.js';
 import {installParticipantSimulator} from './participant-simulator-server.js';
+import {installParticipantLive} from './participant-live-server.js';
 
 const app=express();app.disable('x-powered-by');app.set('trust proxy',1);
 const port=Number(process.env.PORT||3000);
@@ -167,6 +168,7 @@ app.patch('/api/admin/bets/:folio',requireAdmin,async(req,res,next)=>{try{const 
 await installPayments(app,pool,requireAdmin);
 await installResults(app,pool,requireAdmin);
 installParticipantSimulator(app,pool);
+installParticipantLive(app,pool);
 app.get('/api/health',(req,res)=>res.json({ok:true}));
 app.use(express.static(path.join(process.cwd(),'public')));app.get('*',(req,res)=>res.sendFile(path.join(process.cwd(),'public','index.html')));
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Error interno del servidor'})});

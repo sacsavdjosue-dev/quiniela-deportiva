@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#102238">
+<title>Simulador y resultados en vivo | Quiniela Deportiva</title>
+<style>
+:root{--navy:#102238;--deep:#071a2b;--lime:#d5f235;--green:#00a86b;--muted:#c3d3da;--edge:#466477}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial,sans-serif;color:#f5f7fa;background:linear-gradient(140deg,#071a2b,#12504a);min-height:100vh}
+main{max-width:920px;margin:auto;padding:16px}a{color:#d5f235}header{padding:12px 0 18px}h1{font-size:clamp(23px,5vw,31px);margin:8px 0}h2{font-size:19px;margin:4px 0 10px}h3{font-size:15px}p{line-height:1.5}.muted{color:#c3d3da;font-size:13px}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.07em;color:var(--lime)}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}nav a{padding:9px 12px;border:1px solid #507585;border-radius:8px;text-decoration:none;font-weight:750;color:#fff;font-size:13px}nav a[aria-current]{background:var(--lime);color:#102238;border-color:var(--lime)}
+.tabs{display:flex;gap:8px;margin:14px 0}.tabs button{flex:1;background:#244457;color:white;padding:11px}.tabs button.active{background:var(--lime);color:#102238}
+.panel{background:#102238;border:1px solid #35596b;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 8px 20px #0003}.hide{display:none!important}
+button{cursor:pointer;font-weight:800;border:0;border-radius:8px;padding:9px 11px}button.primary{background:var(--lime);color:#102238}button.secondary{background:#23495c;color:white;border:1px solid #5e7687}button:disabled{opacity:.52;cursor:not-allowed}
+select,input{max-width:100%;background:#f1f7f8;border:1px solid #849eaa;border-radius:7px;padding:9px;color:#132c3d;font:inherit;font-size:13px}select:focus-visible,input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--lime);outline-offset:2px}
+.match{display:grid;grid-template-columns:minmax(0,1fr) minmax(100px,155px);gap:10px;padding:12px 0;border-bottom:1px solid #36576a;align-items:center}.match .names{font-weight:750;font-size:13px;overflow-wrap:anywhere}.match small{display:block;color:#b7cdd7;margin-top:5px}.match.wild{background:#214a3c;border-left:3px solid var(--lime);padding-left:10px}.match select{width:100%}
+.pickline{display:flex;gap:4px;margin-top:7px}.pickline button{width:35px;padding:7px 0;background:#294b5b;color:white;border:1px solid #53748a}.pickline button.on{background:var(--lime);color:#142c3e}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:13px 0}.controls>*{flex:1 1 150px}
+.stat{background:#1c3e51;padding:12px;border-radius:9px;margin:13px 0;line-height:1.6}.stat strong{display:block;font-size:21px}.warning{color:#ffcf84}.badge{display:inline-block;background:#415765;border-radius:999px;padding:4px 9px;font-size:11px;font-weight:750}
+.leader-header{display:flex;justify-content:space-between;gap:9px;align-items:center;flex-wrap:wrap}.leader-filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:15px 0}.leader-filters label{font-size:12px;color:var(--muted);display:grid;gap:6px}.leader-filters input,.leader-filters select{width:100%}.leader-row{border-bottom:1px solid #38576a;padding:11px 3px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.leader-row strong,.leader-row small{display:block}.leader-row strong{font-size:14px}.leader-row small{font-size:12px;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}.score{font-weight:850;font-size:17px;color:var(--lime);text-align:right}.refresh{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.pagination{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:14px}.pagination span{font-size:12px;color:#d4e2e8}
+@media(max-width:520px){main{padding:10px}.panel{padding:12px}.leader-filters{grid-template-columns:1fr}.match{grid-template-columns:minmax(0,1fr) 112px;gap:6px}.match .names{font-size:11px}.pickline button{width:30px}.tabs button{font-size:12px}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">QUINIELA DEPORTIVA</div>
+<h1>Simulador y resultados en vivo</h1>
+<p class="muted">Simula encuentros sin registrar apuestas y consulta el desempeño de las quinielas de cada jornada conforme se capturan resultados.</p>
+<nav aria-label="Navegación pública"><a href="/">⚽ Participar</a><a href="/simulador.html" aria-current="page">🎯 Simulador y en vivo</a><a href="/resultados.html">🏆 Resultados oficiales</a></nav>
+</header>
+<div class="tabs" role="group" aria-label="Vista del simulador"><button id="tabSim" type="button" class="active" aria-pressed="true">🎯 Simular resultados</button><button id="tabLive" type="button" aria-pressed="false">📊 Clasificación en vivo</button></div>
+<section class="panel" id="simPanel">
+<h2>Simulador independiente</h2>
+<p class="muted">Marca tus propios pronósticos L / E / V (puedes elegir dobles o triples) y un resultado hipotético por partido. Nada se registra ni modifica en Supabase.</p>
+<p id="simRoundInfo" class="muted" role="status">Cargando jornada activa…</p>
+<div id="simMatches"></div>
+<div class="controls"><button id="randomSim" type="button" class="primary">RESULTADOS AL AZAR</button><button id="allLocal" type="button" class="secondary">PRONÓSTICOS TODOS L</button><button id="clearSim" type="button" class="secondary">BORRAR SIMULACIÓN</button></div>
+<div id="simScore" class="stat" role="status" aria-live="polite">Selecciona pronósticos y resultados para calcular aciertos.</div>
+<p class="muted">Este cálculo es personal e hipotético. No altera los marcadores oficiales ni la clasificación en vivo de otros participantes.</p>
+</section>
+<section class="panel hide" id="livePanel">
+<div class="leader-header"><div><h2>Clasificación de todas las quinielas</h2><span class="badge" id="liveBadge">EN VIVO · PROVISIONAL</span></div><div class="refresh"><button id="liveRefresh" type="button" class="primary">ACTUALIZAR</button></div></div>
+<p class="muted">Incluye folios registrados aunque la jornada siga abierta. La tabla se actualiza automáticamente cada 15 segundos; los aciertos se basan únicamente en los resultados que haya publicado el administrador.</p>
+<div class="leader-filters"><label>Jornada<select id="liveRound"><option value="">Cargando jornadas…</option></select></label><label>Buscar nombre o folio<input id="liveSearch" type="search" placeholder="Filtrar participaciones" maxlength="100"></label></div>
+<p id="liveMessage" class="muted" aria-live="polite">Consultando participaciones…</p>
+<div id="liveStats" class="stat hide"></div>
+<div id="liveRows" aria-live="polite"></div>
+<div class="pagination"><button type="button" class="secondary" id="prevPage">ANTERIOR</button><span id="livePageLabel">—</span><button type="button" class="secondary" id="nextPage">SIGUIENTE</button></div>
+<p class="muted">Si aún no hay marcadores públicos, se muestran los folios sin puntaje. Los resultados son provisionales hasta el cierre y publicación final. No se muestran teléfonos, pagos ni combinaciones.</p>
+</section>
+</main>
+<script src="/simulador-en-vivo.js" defer></script>
+</body>
+</html>
