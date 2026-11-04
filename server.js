@@ -11,6 +11,7 @@ import {installParticipantSimulator} from './participant-simulator-server.js';
 import {installParticipantLive} from './participant-live-server.js';
 import {installSimulationParticipants} from './simulation-participants-server.js';
 import {installRoundArchive} from './round-archive-server.js';
+import {installRoundResultsPdf} from './round-results-pdf-server.js';
 
 const app=express();app.disable('x-powered-by');app.set('trust proxy',1);
 const port=Number(process.env.PORT||3000);
@@ -173,6 +174,7 @@ installParticipantSimulator(app,pool);
 installParticipantLive(app,pool);
 installSimulationParticipants(app,pool);
 await installRoundArchive(app,pool,requireAdmin,secret,password);
+installRoundResultsPdf(app,pool,requireAdmin);
 app.get('/api/health',(req,res)=>res.json({ok:true}));
 app.use(express.static(path.join(process.cwd(),'public')));app.get('*',(req,res)=>res.sendFile(path.join(process.cwd(),'public','index.html')));
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Error interno del servidor'})});

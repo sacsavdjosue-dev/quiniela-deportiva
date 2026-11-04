@@ -49,6 +49,7 @@ adminRender = function() {
         <button class="secondary" id="resultsSaveButton" type="button" onclick="saveRoundResults()">GUARDAR RESULTADOS</button>
         <button class="outline" type="button" onclick="loadResultsRanking()">VER CLASIFICACIÓN</button>
         <button class="outline" type="button" onclick="loadResultsAudit()">HISTORIAL DE CAMBIOS</button>
+        <button class="outline" id="resultsPdfButton" type="button" onclick="downloadResultsPdf()">DESCARGAR PDF DE RESULTADOS</button>
       </div>
       <p id="resultsSaveInfo" class="hint" role="status"></p>
       <div id="resultsRankings"></div>
@@ -224,6 +225,44 @@ async function loadResultsRanking() {
   }
 }
 
+async function downloadResultsPdf() {
+  if (!resultsCurrent?.round?.id) return;
+  const button = resultsEl('resultsPdfButton');
+  const notice = resultsEl('resultsSaveInfo');
+  if (button?.disabled) return;
+  if (button) button.disabled = true;
+  if (notice) notice.textContent = 'Preparando el PDF de la jornada…';
+  try {
+    const id = encodeURIComponent(resultsCurrent.round.id);
+    const response = await fetch('/api/admin/rounds/' + id + '/results.pdf', {
+      method: 'GET', credentials: 'same-origin', cache: 'no-store'
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'No se pudo generar el PDF.');
+    }
+    const pdf = await response.blob();
+    const disposition = response.headers.get('Content-Disposition') || '';
+    const match = disposition.match(/filename="([^"\r\n]+)"/);
+    const filename = match ? match[1] : ('resultados-jornada-' + id + '.pdf');
+    const url = URL.createObjectURL(pdf);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    if (notice) notice.textContent = 'PDF preparado para descarga. Revisa la carpeta Descargas.';
+  } catch (error) {
+    if (notice) notice.textContent = 'No se pudo descargar: ' + error.message;
+    alert('No se pudo descargar el PDF: ' + error.message);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
 async function loadResultsAudit() {
   if (!resultsCurrent) return;
   const box = resultsEl('resultsAudit');
@@ -241,7 +280,7 @@ async function loadResultsAudit() {
   } catch (e) { box.replaceChildren(resultsText('p', 'Error: ' + e.message, 'hint warning')); }
 }
 
-Object.assign(window, {loadSelectedResultsRound, saveRoundResults, loadResultsRanking, loadResultsAudit});
+Object.assign(window, {loadSelectedResultsRound, saveRoundResults, loadResultsRanking, loadResultsAudit, downloadResultsPdf});
 
 document.head.insertAdjacentHTML('beforeend', `<style>
 #resultsManagementPanel{border:1px solid #577487;border-radius:10px;padding:12px;margin:15px 0;background:#102c3d}
