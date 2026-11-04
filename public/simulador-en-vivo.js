@@ -98,7 +98,6 @@ async function loadSim(){
  }catch(error){el('simRoundInfo').textContent='No se pudo cargar la jornada: '+error.message;}
 }
 el('randomSim').onclick=()=>{if(!roundConfig)return;simulated=simulated.map(()=>sym[Math.floor(Math.random()*3)]);document.querySelectorAll('#simMatches select').forEach((node,i)=>{node.value=simulated[i]});scoreHypothetical();};
-el('allLocal').onclick=()=>{if(!roundConfig)return;personalPicks=personalPicks.map(()=>['L']);document.querySelectorAll('.pickline').forEach(row=>{for(const button of row.querySelectorAll('button')){const on=button.textContent==='L';button.classList.toggle('on',on);button.setAttribute('aria-pressed',String(on));}});scoreHypothetical();};
 el('clearSim').onclick=()=>{if(!roundConfig)return;personalPicks=personalPicks.map(()=>[]);simulated=simulated.map(()=>null);document.querySelectorAll('#simMatches select').forEach(node=>{node.value='';});document.querySelectorAll('.pickline button').forEach(node=>{node.classList.remove('on');node.setAttribute('aria-pressed','false')});scoreHypothetical();};
 
 async function loadLiveRounds(){
