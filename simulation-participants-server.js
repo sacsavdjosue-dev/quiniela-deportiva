@@ -1,7 +1,7 @@
 // RESULTADOS_PARTICIPANTES_SIMULADOS_V4
 // Lee las quinielas de la jornada activa para puntuar una simulacion en memoria.
 // No guarda ni modifica pronosticos, marcadores, pagos o resultados oficiales.
-// Si la clasificacion no esta publicada, solo se muestran los folios (sin nombres).
+// Se muestra nombre, folio, puntaje y UNA combinación máxima. Sin teléfonos ni pagos.
 const VALID_PICK = new Set(['L','E','V']);
 
 export function validateParticipantSimulation(raw, count) {
@@ -29,8 +29,23 @@ export function scoreParticipantSimulations(outcomes, bets, showNames=false) {
     const valid = groups.length === outcomes.length && groups.every(g =>
       Array.isArray(g) && g.length > 0 && g.every(x => VALID_PICK.has(x)));
     const points = valid ? checks.reduce((n,[i,result]) => n + Number(groups[i].includes(result)),0) : 0;
-    return {participant:showNames?String(bet.name):null,folio:String(bet.folio),bestScore:points,
-      registeredAt:bet.created_at || ''};
+    // QUINIELA_SIMULADOR_MEJOR_COMBINACION_V5: construir una combinación que
+    // existe en la expansión cartesiana original de selecciones del folio.
+    // Si un partido puntúa y el resultado está entre sus pronósticos, elegirlo;
+    // en los demás encuentros, elegir la primera opción según L/E/V.
+    const options = valid ? groups.map(group => ['L','E','V'].filter(x => group.includes(x))) : [];
+    const scoredByIndex = new Map(checks);
+    const bestCombination = valid && checks.length ? options.map((choices,i) => {
+      const expected = scoredByIndex.get(i);
+      return expected && choices.includes(expected) ? expected : choices[0];
+    }).join('') : null;
+    // Las alternativas no puntuadas, o sin pronóstico acertado, empatan en puntos.
+    const bestCombinationsCount = valid && checks.length ? options.reduce((n,choices,i) => {
+      const expected = scoredByIndex.get(i);
+      return n * (expected && choices.includes(expected) ? 1 : choices.length);
+    },1) : 0;
+    return {participant:String(bet.name),folio:String(bet.folio),bestScore:points,
+      bestCombination,bestCombinationsCount,registeredAt:bet.created_at || ''};
   });
   rankings.sort((a,b) => b.bestScore-a.bestScore ||
     String(a.registeredAt).localeCompare(String(b.registeredAt)) || a.folio.localeCompare(b.folio));
@@ -58,7 +73,7 @@ export function installSimulationParticipants(app,pool) {
       try {outcomes=validateParticipantSimulation(req.body?.outcomes,count)}
       catch(err) {return res.status(400).json({error:err.message})}
       const bets=await pool.query('SELECT folio,name,selections,created_at FROM bets WHERE round_id=$1 ORDER BY id',[round.id]);
-      const result=scoreParticipantSimulations(outcomes,bets.rows,round.published===true);
+      const result=scoreParticipantSimulations(outcomes,bets.rows,true);
       res.set('Cache-Control','no-store');
       res.json({round:{id:Number(round.id),name:round.name},status:'SIMULADO_NO_OFICIAL',...result});
     }catch(err){next(err)}

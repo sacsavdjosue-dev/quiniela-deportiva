@@ -26,6 +26,14 @@ function draw(reset=false){
   const detail=make('div');
   detail.append(make('strong',(person.rank===null?'—':'#'+person.rank)+' · '+(person.participant||'Participante')));
   detail.append(make('small','Folio: '+person.folio));
+  // QUINIELA_SIMULADOR_MEJOR_COMBINACION_V5: una combinación existente que
+  // consigue el máximo de aciertos de este folio en la simulación actual.
+  if(total>0 && typeof person.bestCombination==='string' && /^[LEV]{10,11}$/.test(person.bestCombination)){
+   detail.append(make('small','Combinación: '+person.bestCombination.split('').join(' '),'sim-best-combination'));
+   if(Number(person.bestCombinationsCount)>1){
+    detail.append(make('small',person.bestCombinationsCount+' combinaciones de este folio comparten ese puntaje.'));
+   }
+  }
   row.append(detail,make('span',person.bestScore+' / '+total+' aciertos','score'));
   list.append(row);
  }
@@ -81,6 +89,7 @@ const style=document.createElement('style');style.textContent=`
 .sim-participants h3{margin:4px 0 5px;font-size:16px}
 .sim-participants .leader-row{padding:9px 2px}
 .sim-participants .leader-row .score{font-size:15px;white-space:nowrap}
+.sim-participants .sim-best-combination{font-family:ui-monospace,Consolas,monospace;letter-spacing:.03em;color:#eaf6bc;font-weight:750;white-space:normal;overflow-wrap:anywhere}
 .sim-participants button[hidden]{display:none!important}
 .sim-participants>button{margin:10px 0;width:100%}
 `;document.head.append(style);
