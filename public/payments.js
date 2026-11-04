@@ -36,8 +36,8 @@ adminRender=function(){
  const section=document.createElement('section');
  section.id='paymentControlPanel';section.className='admin-row';
  section.innerHTML=`
- <h2>Control administrativo de pagos</h2>
- <p class="hint">Los abonos registrados quedan pendientes hasta que el administrador los valide. Los estados anteriores de las quinielas no constituyen cobros verificados.</p>
+ <h2>Quinielas y control de pagos</h2>
+ <p class="hint">Gestiona cada quiniela y sus pagos desde una sola ficha. El estado de recepcion es informativo; un pago solo cuenta como cobrado cuando se valida un abono.</p>
  <label for="paymentRound">Jornada</label>
  <select id="paymentRound" onchange="reloadPaymentPanel()"><option value="">Todas las jornadas</option></select>
  <div class="payment-stats">
@@ -55,10 +55,18 @@ adminRender=function(){
     <option value="parcial">Pagos parciales</option>
     <option value="completo">Totalmente pagadas</option>
    </select>
+   <select id="paymentRegistrationState" aria-label="Filtrar estado de recepcion" onchange="loadPaymentAccounts()">
+    <option value="">Todos los estados de recepcion</option>
+    <option value="pendiente">Pendiente de recepcion</option>
+    <option value="recibida">Recibida</option>
+    <option value="pagada">Pagada (estado historico)</option>
+    <option value="validada">Validada (estado historico)</option>
+   </select>
  </div>
  <div class="payment-actions">
    <button type="button" class="secondary" onclick="reloadPaymentPanel()">ACTUALIZAR PAGOS</button>
    <button type="button" class="outline" onclick="exportPaymentHistory()">EXPORTAR ABONOS CSV</button>
+   <button type="button" class="outline" onclick="exportPaymentRegistrations()">EXPORTAR QUINIELAS CSV</button>
  </div>
  <p id="paymentAccountHint" class="hint">Cargando cuentas…</p>
  <div id="paymentAccounts"></div>
@@ -96,7 +104,8 @@ async function loadPaymentRounds(){
 function paymentQuery(){return new URLSearchParams({
  roundId:paymentElement('paymentRound')?.value||'',
  q:paymentElement('paymentSearch')?.value.trim()||'',
- state:paymentElement('paymentState')?.value||''
+ state:paymentElement('paymentState')?.value||'',
+ registrationStatus:paymentElement('paymentRegistrationState')?.value||''
 })}
 function reloadPaymentPanel(){loadPaymentSummary();loadPaymentAccounts()}
 function schedulePaymentSearch(){clearTimeout(paymentSearchTimer);paymentSearchTimer=setTimeout(loadPaymentAccounts,280)}
@@ -125,7 +134,7 @@ async function loadPaymentAccounts(){
   for(const b of accounts){
    const card=makePaymentNode('div','payment-account');
    const title=makePaymentNode('strong','',b.name+' · '+b.folio);
-   const meta=makePaymentNode('div','hint',b.round+' · '+(b.contact_phone||'Sin teléfono')+' · '+b.status);
+   const meta=makePaymentNode('div','hint',b.round+' · '+(b.contact_phone||'Sin teléfono')+' · '+b.count+' combinacion(es) · Recepcion: '+b.status.toUpperCase());
    const totals=makePaymentNode('div','payment-account-amounts',
     'Total '+pesosPayments(b.amount)+' · Validado '+moneyPayments(b.validated_cents)+
     ' · Por revisar '+moneyPayments(b.reviewing_cents)+' · Saldo '+moneyPayments(b.balance_cents));
@@ -134,7 +143,9 @@ async function loadPaymentAccounts(){
    add.onclick=()=>openPaymentEditor(b);
    const history=makePaymentNode('button','outline','VER ABONOS');history.type='button';
    history.onclick=()=>openPaymentHistory(b.folio);
-   controls.append(add,history);
+   const detail=makePaymentNode('button','outline','VER QUINIELA');detail.type='button';
+   detail.onclick=()=>openPaymentRegistration(b,card);
+   controls.append(detail,add,history);
    card.append(title,meta,totals,controls);
    container.append(card);
   }
@@ -248,3 +259,72 @@ document.head.insertAdjacentHTML('beforeend',`<style>
  #paymentControlPanel [hidden]{display:none!important}
  @media(min-width:560px){#paymentControlPanel .payment-stats{grid-template-columns:repeat(4,minmax(0,1fr))}#paymentControlPanel .payment-filters{grid-template-columns:2fr 1fr}}
  </style>`);
+
+
+// UNIFICACION_REGISTRO_PAGOS_V1: los datos completos se consultan solo al abrir una ficha.
+async function openPaymentRegistration(account,card){
+ const old=card.querySelector('.payment-registration-detail');
+ if(old){old.remove();return;}
+ const detail=makePaymentNode('div','payment-registration-detail');
+ detail.append(makePaymentNode('p','hint','Consultando quiniela y combinaciones...'));
+ card.appendChild(detail);
+ try{
+  const data=await request('/api/admin/payments/registration/'+encodeURIComponent(account.folio));
+  if(!detail.isConnected)return;
+  detail.replaceChildren();
+  detail.append(makePaymentNode('h3','','Detalle de quiniela'));
+  detail.append(makePaymentNode('p','hint',
+   'Folio: '+data.folio+' · Participante: '+data.name+' · '+
+   (data.contact_phone||'Sin telefono')+' · Registrada: '+paymentDateTime(data.created_at)));
+  detail.append(makePaymentNode('p','hint',
+   'Jornada: '+data.round+' · '+data.count+' combinacion(es) · Importe: '+pesosPayments(data.amount)));
+  const stateLabel=makePaymentNode('label','hint','Estado de recepcion (no acredita pago):');
+  const state=makePaymentNode('select');state.setAttribute('aria-label','Estado de recepcion de '+data.folio);
+  for(const [value,label] of [
+   ['pendiente','Pendiente'],['recibida','Recibida'],
+   ['pagada','Pagada (historico)'],['validada','Validada (historico)']
+  ])state.append(new Option(label,value));
+  state.value=data.status;
+  const save=makePaymentNode('button','secondary','GUARDAR ESTADO');save.type='button';
+  save.onclick=async()=>{
+   if(state.value===data.status)return;
+   if(!confirm('¿Actualizar el estado de RECEPCION a '+state.value+'? Esto NO validara ningun abono.'))return;
+   save.disabled=true;
+   try{
+    await request('/api/admin/bets/'+encodeURIComponent(data.folio),{
+     method:'PATCH',body:JSON.stringify({status:state.value})});
+    data.status=state.value;
+    await loadPaymentAccounts();
+   }catch(e){alert('No se pudo cambiar el estado: '+e.message);state.value=data.status}
+   finally{save.disabled=false}
+  };
+  const stateBox=makePaymentNode('div','payment-registration-state');stateBox.append(stateLabel,state,save);
+  detail.append(stateBox);
+  const selections=makePaymentNode('p','hint','Pronosticos seleccionados: '+
+   (Array.isArray(data.selections)?data.selections.map(g=>Array.isArray(g)?g.join('/'):String(g)).join('  ·  '):'No disponibles'));
+  detail.append(selections);
+  const list=makePaymentNode('details');
+  const summary=makePaymentNode('summary','', 'Ver '+data.count+' combinacion(es) registradas');
+  const pre=makePaymentNode('pre','payment-combinations');
+  const combos=Array.isArray(data.combinations)?data.combinations:[];
+  pre.textContent=combos.map((value,i)=>String(i+1).padStart(3,'0')+'. '+String(value).split('').join(' ')).join('\n');
+  list.append(summary,pre);detail.append(list);
+ }catch(e){if(detail.isConnected)detail.replaceChildren(makePaymentNode('p','hint warning','No se pudo consultar la quiniela: '+e.message))}
+}
+function exportPaymentRegistrations(){
+ const roundId=paymentElement('paymentRound')?.value||'';
+ location.href='/api/admin/payments/registrations.csv?'+new URLSearchParams({roundId});
+}
+
+const unifiedPaymentsStyle=document.createElement('style');
+unifiedPaymentsStyle.textContent=`
+#paymentControlPanel .payment-registration-detail{margin-top:12px;padding:12px;border:1px solid #618398;border-radius:9px;background:#15384b}
+#paymentControlPanel .payment-registration-detail h3{margin:2px 0 8px}
+#paymentControlPanel .payment-registration-state{display:grid;gap:7px;margin:10px 0}
+#paymentControlPanel .payment-registration-state select{width:100%}
+#paymentControlPanel .payment-registration-state button{width:100%}
+#paymentControlPanel .payment-registration-detail summary{cursor:pointer;padding:8px 0;font-weight:700;font-size:13px}
+#paymentControlPanel .payment-combinations{font-size:11px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow-y:auto;background:#0b2535;border-radius:7px;padding:10px}
+@media(min-width:700px){#paymentControlPanel .payment-filters{grid-template-columns:2fr 1fr 1fr}}
+`;
+document.head.appendChild(unifiedPaymentsStyle);

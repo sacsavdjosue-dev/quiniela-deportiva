@@ -1,3 +1,4 @@
+// UNIFICACION_REGISTRO_PAGOS_V1
 // PANELES_ADMIN_SEPARADOS_V1: administración accesible en URLs privadas, sin botones en vista pública.
 // URL de configuración: /admin/configuracion
 // URL de pagos: /admin/pagos
@@ -83,7 +84,7 @@
     nav.id = 'privateAdminNav';
     nav.setAttribute('aria-label', 'Secciones de administración');
     nav.appendChild(createNavLink('/admin/configuracion', '⚙ CONFIGURACIÓN', currentView === 'configuracion'));
-    nav.appendChild(createNavLink('/admin/pagos', '💳 PAGOS Y REGISTROS', currentView === 'pagos'));
+    nav.appendChild(createNavLink('/admin/pagos', '💳 QUINIELAS Y PAGOS', currentView === 'pagos'));
     const logout = document.createElement('button');
     logout.type = 'button';
     logout.textContent = 'CERRAR SESIÓN';
@@ -97,7 +98,7 @@
     const heading = document.querySelector('#admin .hero h1');
     const subtitle = document.querySelector('#admin .hero small');
     if (heading) heading.textContent = currentView === 'pagos'
-      ? 'ADMINISTRACIÓN DE PAGOS' : 'CONFIGURACIÓN DE QUINIELAS';
+      ? 'ADMINISTRACIÓN DE QUINIELAS Y PAGOS' : 'CONFIGURACIÓN DE QUINIELAS';
     if (subtitle) subtitle.textContent = 'Acceso administrativo protegido';
 
     if (currentView === 'pagos' && !finance) {

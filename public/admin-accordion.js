@@ -124,9 +124,15 @@
     const leftovers = other.filter(node => !registry?.contains(node));
     root.replaceChildren();
     toolBar(root);
-    section(root, 'cobros', 'Control de pagos y abonos', 'Cuentas, saldos, validaciones y exportaciones', '💳', [finance], true);
+    section(root, 'cobros', 'Quinielas y pagos', 'Folios, combinaciones, estados, saldos y abonos', '💳', [finance], true);
     section(root, 'conciliacion', 'Conciliación de ganadores', 'Revisar primeros lugares y pagos confirmados', '🏆', [review], false);
-    section(root, 'registro', 'Registro central de quinielas', 'Consultar folios, estados e historial', '📋', [registry, ...leftovers], false);
+    // UNIFICACION_REGISTRO_PAGOS_V1: mantener nodos historicos ocultos para no romper
+    // funciones heredadas que aun usan historyRound, betTable y sus ID.
+    const legacy=document.createElement('div');
+    legacy.id='registroLegacyCompat';legacy.hidden=true;legacy.style.display='none';
+    legacy.setAttribute('aria-hidden','true');
+    for(const node of [registry,...leftovers])if(node)legacy.append(node);
+    root.append(legacy);
   }
 
   const oldRender = adminRender;

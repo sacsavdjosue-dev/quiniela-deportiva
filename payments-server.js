@@ -68,22 +68,25 @@ export async function installPayments(app,pool,requireAdmin){
     try{
       const roundId=parseRound(req.query.roundId),q=String(req.query.q||'').trim().slice(0,100);
       const state=String(req.query.state||'');
-      if(Number.isNaN(roundId)||!['','sin_abonos','por_validar','parcial','completo'].includes(state))
+      const registrationStatus=String(req.query.registrationStatus||'');
+      if(Number.isNaN(roundId)||!['','sin_abonos','por_validar','parcial','completo'].includes(state)||
+         !['','pendiente','recibida','pagada','validada'].includes(registrationStatus))
         return res.status(400).json({error:'Filtro inválido'});
       const result=await pool.query(`SELECT * FROM (
-          SELECT b.folio,b.name,b.contact_phone,b.round,b.round_id,b.amount,b.status,b.created_at,
+          SELECT b.folio,b.name,b.contact_phone,b.round,b.round_id,b.count,b.amount,b.status,b.created_at,
                  pay.validated_cents,pay.reviewing_cents,
                  GREATEST(b.amount::bigint*100-pay.validated_cents,0) AS balance_cents
           FROM bets b ${aggregates}
           WHERE ($1::bigint IS NULL OR b.round_id=$1)
             AND ($2::text='' OR b.folio ILIKE ('%'||$2||'%') OR b.name ILIKE ('%'||$2||'%')
                  OR COALESCE(b.contact_phone,'') LIKE ('%'||$2||'%'))
+            AND ($4::text='' OR b.status=$4)
         ) a WHERE ($3::text=''
           OR ($3='sin_abonos' AND a.validated_cents=0 AND a.reviewing_cents=0)
           OR ($3='por_validar' AND a.reviewing_cents>0)
           OR ($3='parcial' AND a.validated_cents>0 AND a.balance_cents>0)
           OR ($3='completo' AND a.balance_cents=0))
-        ORDER BY a.created_at DESC,a.folio DESC LIMIT 100`,[roundId,q,state]);
+        ORDER BY a.created_at DESC,a.folio DESC LIMIT 100`,[roundId,q,state,registrationStatus]);
       res.set('Cache-Control','no-store');res.json({rows:result.rows,limit:100});
     }catch(e){next(e)}
   });
@@ -166,6 +169,52 @@ export async function installPayments(app,pool,requireAdmin){
          WHERE id=$1`,[id,reason]);
       await client.query('COMMIT');res.json({ok:true,replayed:false});
     }catch(e){await client.query('ROLLBACK');next(e)}finally{client.release()}
+  });
+
+
+  // UNIFICACION_REGISTRO_PAGOS_V1: consulta bajo demanda de una sola quiniela.
+  // No exponer combinaciones ni telefonos en rutas publicas.
+  app.get('/api/admin/payments/registration/:folio',requireAdmin,async(req,res,next)=>{
+    try{
+      const folio=String(req.params.folio||'');
+      if(!folio||folio.length>80)return res.status(400).json({error:'Folio invalido.'});
+      const r=await pool.query(`SELECT folio,name,contact_phone,round,round_id,
+        selections,combinations,count,amount,status,created_at,updated_at
+        FROM bets WHERE folio=$1 LIMIT 1`,[folio]);
+      if(!r.rowCount)return res.status(404).json({error:'Quiniela no encontrada.'});
+      res.set('Cache-Control','no-store');res.json(r.rows[0]);
+    }catch(e){next(e)}
+  });
+
+  // Exportacion completa, sin truncar a 2,000 registros como el visor historico.
+  // Incluye todas las combinaciones y totales de pagos validados/pendientes.
+  app.get('/api/admin/payments/registrations.csv',requireAdmin,async(req,res,next)=>{
+    try{
+      const roundId=parseRound(req.query.roundId);
+      if(Number.isNaN(roundId))return res.status(400).json({error:'Jornada invalida.'});
+      const r=await pool.query(`SELECT b.folio,b.name,b.contact_phone,b.round,b.status,
+        b.count,b.amount,b.created_at,b.selections,b.combinations,
+        pay.validated_cents,pay.reviewing_cents,
+        GREATEST(b.amount::bigint*100-pay.validated_cents,0) AS balance_cents
+        FROM bets b ${aggregates}
+        WHERE ($1::bigint IS NULL OR b.round_id=$1)
+        ORDER BY b.id`,[roundId]);
+      const headers=['Folio','Participante','Telefono','Jornada','Estado de recepcion',
+        'Combinaciones registradas','Importe quiniela MXN','Validado MXN',
+        'Por validar MXN','Saldo MXN','Fecha de registro UTC','Pronosticos',
+        'Todas las combinaciones'];
+      const rows=r.rows.map(b=>[
+        b.folio,b.name,b.contact_phone,b.round,b.status,b.count,b.amount,
+        formatMoney(b.validated_cents),formatMoney(b.reviewing_cents),
+        formatMoney(b.balance_cents),b.created_at,
+        JSON.stringify(b.selections||[]),
+        Array.isArray(b.combinations)?b.combinations.join(' | '):''
+      ]);
+      res.set('Content-Type','text/csv; charset=utf-8');
+      res.set('Content-Disposition','attachment; filename="quinielas-y-pagos.csv"');
+      res.set('Cache-Control','no-store');
+      res.send('\ufeff'+[headers,...rows].map(row=>row.map(csvField).join(',')).join('\r\n'));
+    }catch(e){next(e)}
   });
 
   app.get('/api/admin/payments/export.csv',requireAdmin,async(req,res,next)=>{
