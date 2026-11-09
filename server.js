@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import {installPayments} from './payments-server.js';
+import {installPrizePool} from './prize-pool-server.js';
 import {installResults} from './results-server.js';
 import {installParticipantSimulator} from './participant-simulator-server.js';
 import {installParticipantLive} from './participant-live-server.js';
@@ -169,6 +170,7 @@ app.post('/api/admin/rounds/:id/activate',requireAdmin,async(req,res,next)=>{con
 app.get('/api/admin/bets',requireAdmin,async(req,res,next)=>{try{const r=await pool.query('SELECT * FROM bets ORDER BY id DESC LIMIT 2000');res.json(r.rows)}catch(e){next(e)}});
 app.patch('/api/admin/bets/:folio',requireAdmin,async(req,res,next)=>{try{const {status}=req.body||{};if(!['pendiente','recibida','pagada','validada'].includes(status))return res.status(400).json({error:'Estado inválido'});const result=await pool.query('UPDATE bets SET status=$1, updated_at=now() WHERE folio=$2',[status,req.params.folio]);if(!result.rowCount)return res.status(404).json({error:'Folio no encontrado'});res.json({ok:true})}catch(e){next(e)}});
 await installPayments(app,pool,requireAdmin);
+installPrizePool(app,pool);
 await installResults(app,pool,requireAdmin);
 installParticipantSimulator(app,pool);
 installParticipantLive(app,pool);
