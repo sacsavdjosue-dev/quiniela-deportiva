@@ -1,0 +1,52 @@
+/* QUINIFUT_TRES_BOTONES_EN_FILA_V14
+   Tres accesos de igual ancho en una única fila, incluso en pantallas móviles. */
+#publicResultsLink.qnav-v14 {
+  display:grid !important;
+  grid-template-columns:repeat(3, minmax(0,1fr));
+  align-items:stretch;
+  gap:7px;
+  margin:12px 0 16px;
+  padding:0 2px;
+  text-align:center;
+}
+#publicResultsLink.qnav-v14 .qnav-link {
+  display:flex !important;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  min-height:72px;
+  padding:8px 4px;
+  border-radius:9px;
+  text-decoration:none;
+  font-weight:800;
+  font-size:10.5px;
+  line-height:1.2;
+  letter-spacing:0;
+  text-align:center;
+  overflow-wrap:break-word;
+  white-space:normal;
+  box-shadow:0 3px 8px #0002;
+  transition:filter .15s ease;
+}
+#publicResultsLink.qnav-v14 .qnav-sim{background:#00a86b;color:#fff}
+#publicResultsLink.qnav-v14 .qnav-results{background:#d5f235;color:#102238}
+#publicResultsLink.qnav-v14 .qnav-bank{background:#254b5b;color:#fff;border:1px solid #6c96a4}
+#publicResultsLink.qnav-v14 .qnav-icon {font-size:18px;line-height:1.1}
+#publicResultsLink.qnav-v14 .qnav-label{display:block;min-width:0;max-width:100%}
+#publicResultsLink.qnav-v14 .qnav-link:hover{filter:brightness(1.08)}
+#publicResultsLink.qnav-v14 .qnav-link:focus-visible{outline:3px solid #ffae42;outline-offset:2px}
+@media (max-width:440px){
+  #publicResultsLink.qnav-v14{gap:4px;margin:9px 0 12px;padding:0}
+  #publicResultsLink.qnav-v14 .qnav-link{font-size:9px;line-height:1.14;min-height:75px;padding:5px 2px;gap:3px;border-radius:7px}
+  #publicResultsLink.qnav-v14 .qnav-icon{font-size:16px}
+}
+@media (max-width:345px){
+  #publicResultsLink.qnav-v14{gap:3px}
+  #publicResultsLink.qnav-v14 .qnav-link{font-size:8px;min-height:76px;padding:5px 1px}
+  #publicResultsLink.qnav-v14 .qnav-icon{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){#publicResultsLink.qnav-v14 .qnav-link{transition:none}}
