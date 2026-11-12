@@ -56,14 +56,37 @@ async function loadPublicResults(id){
    win.className='winner warning';win.textContent='Clasificación pendiente de revisión por múltiples encuentros suspendidos.';
    win.hidden=false;
   }
-  const matches=el('matchResults');matches.replaceChildren();
+  // QUINIFUT_RESULTADOS_PUBLICOS_COMPACTOS_ROJOS_V9
+  // Misma tabla compacta del administrador, pero de solo lectura. Se dibuja
+  // exclusivamente con datos de /api/results/:id (resultados publicados).
+  const matches=el('matchResults');
+  matches.replaceChildren();
+  matches.classList.add('pr-compact-results');
+  matches.setAttribute('aria-label','Resultados publicados de los partidos de esta jornada');
+  const legend=make('div','','pr-compact-heading');
+  legend.append(make('span','⚽ RESULTADOS DE LOS PARTIDOS'));
+  legend.append(make('small','Rojo = resultado publicado · S = suspendido'));
+  matches.append(legend);
+  const outcomeNames={L:'ganó el local',E:'empate',V:'ganó el visitante',S:'partido suspendido'};
+  function mark(code, selected, extra=''){
+    const chip=make('span',code,'pr-result-mark'+(extra?' '+extra:'')+(code===selected?' pr-chosen':''));
+    chip.setAttribute('aria-hidden','true');
+    return chip;
+  }
   data.round.teams.forEach((match,i)=>{
-   const wildcard=i===data.round.matchCount-1;
-   const row=make('div','','game'+(wildcard?' wild':''));
-   row.append(make('span',(wildcard?'⭐ Comodín':'Partido '+(i+1))+' · '+match.home+' - '+match.away));
-   const value=data.outcomes[i];
-   const outcome=make('span',value?(value+' · '+labels[value]):'Pendiente','outcome');
-   row.append(outcome);matches.append(row);
+    const wildcard=i===data.round.matchCount-1;
+    const chosen=['L','E','V','S'].includes(data.outcomes[i])?data.outcomes[i]:null;
+    const row=make('div','','pr-result-row'+(wildcard?' pr-wild':''));
+    row.setAttribute('aria-label',(wildcard?'Comodín':'Partido '+(i+1))+': '+match.home+
+      ' contra '+match.away+', resultado: '+(outcomeNames[chosen]||'pendiente'));
+    const home=make('div','','pr-team pr-team-home');
+    if(wildcard)home.append(make('span','★','pr-wild-badge'));
+    home.append(make('span',match.home));
+    const away=make('div','','pr-team pr-team-away');
+    away.append(make('span',match.away));
+    row.append(mark('L',chosen,'pr-edge'),home,mark('E',chosen),away,
+      mark('V',chosen,'pr-edge'),wildcard?make('span','','pr-no-suspend'):mark('S',chosen,'pr-suspend'));
+    matches.append(row);
   });
   el('matchesSection').hidden=false;
   const list=el('rankingResults');list.replaceChildren();

@@ -1,0 +1,99 @@
+/* QUINIFUT_RESULTADOS_PUBLICOS_COMPACTOS_ROJOS_V9 */
+/* Vista publica: mismo diseno compacto del panel de resultados administrativo V8.
+   Las marcas rojas son exclusivamente informativas; el usuario no edita resultados. */
+#matchesSection #matchResults.pr-compact-results {
+  display:block !important;
+  max-width:580px;
+  margin:8px auto 6px;
+  border:1px solid #637987;
+  border-radius:7px;
+  overflow:hidden;
+  background:#f5f7fa;
+  color:#142d3d;
+}
+#matchesSection .pr-compact-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:4px 8px;
+  padding:5px 7px;
+  background:#173b4b;
+  color:#fff;
+  font-weight:800;
+  font-size:10px;
+  line-height:1.25;
+}
+#matchesSection .pr-compact-heading small {font-size:9px;font-weight:500;color:#c6dce2}
+#matchesSection #matchResults .pr-result-row {
+  display:grid;
+  grid-template-columns:23px minmax(0,1fr) 23px minmax(0,1fr) 23px 23px;
+  align-items:stretch;
+  gap:0;
+  padding:0;
+  min-height:25px;
+  background:#f5f7fa;
+  color:#142d3d;
+  border:0;
+  border-bottom:1px solid #cbd6dc;
+  border-radius:0;
+}
+#matchesSection #matchResults .pr-result-row:nth-child(odd) {background:#e8eef1}
+#matchesSection #matchResults .pr-result-row:last-child {border-bottom:0}
+#matchesSection #matchResults .pr-result-row.pr-wild {
+  background:#dff1e7;
+  border-top:1px solid #00a86b;
+}
+#matchesSection .pr-team {
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:3px;
+  padding:1px 3px;
+  font-size:10px;
+  font-weight:750;
+  line-height:1.08;
+  overflow-wrap:anywhere;
+}
+#matchesSection .pr-team.pr-team-away {justify-content:flex-end;text-align:right}
+#matchesSection .pr-team>span:last-child {min-width:0}
+#matchesSection .pr-wild-badge {font-size:9px;color:#00754e;flex-shrink:0}
+#matchesSection .pr-result-mark {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-width:0;
+  min-height:25px;
+  font-size:10px;
+  font-weight:900;
+  color:#173344;
+  background:#dce7eb;
+  user-select:none;
+  cursor:default;
+}
+#matchesSection .pr-result-mark.pr-edge {background:#d0dce3}
+#matchesSection .pr-result-mark.pr-suspend {background:#e7e9eb;color:#465760;font-size:9px}
+#matchesSection .pr-result-mark.pr-chosen {
+  background:#e52336;
+  color:#fff;
+}
+#matchesSection .pr-no-suspend {background:#dff1e7}
+@media(max-width:520px) {
+  #matchesSection {padding:11px 7px}
+  #matchesSection #matchResults.pr-compact-results {max-width:100%;margin:6px 0 9px}
+  #matchesSection #matchResults .pr-result-row {
+    grid-template-columns:21px minmax(0,1fr) 21px minmax(0,1fr) 21px 21px;
+    min-height:24px;
+  }
+  #matchesSection .pr-team {font-size:9px;padding:1px 2px;gap:2px}
+  #matchesSection .pr-result-mark {min-height:24px;font-size:9px}
+  #matchesSection .pr-compact-heading {padding:4px 5px;font-size:9px}
+  #matchesSection .pr-compact-heading small {font-size:8px}
+}
+@media(max-width:355px) {
+  #matchesSection #matchResults .pr-result-row {
+    grid-template-columns:20px minmax(0,1fr) 20px minmax(0,1fr) 20px 20px;
+  }
+  #matchesSection .pr-team {font-size:8.5px}
+}
