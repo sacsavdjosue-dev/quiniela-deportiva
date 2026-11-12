@@ -60,18 +60,59 @@ export function scoreParticipantSimulations(outcomes, bets, showNames=false) {
     totalRegistered:rankings.length,rankings};
 }
 
+// QUINIFUT_SIMULADOR_OFICIALES_FIJOS_V12
+// Solo muestra resultados PUBLICADOS; los borradores nunca salen de la API.
+// En la simulación no se permite sobrescribir un resultado oficial ya publicado.
+const OFFICIAL_CODES = new Set(['L','E','V']);
+function fixedPublishedOutcomes(round, count) {
+  if (round.published !== true || !Array.isArray(round.visible_outcomes) ||
+      round.visible_outcomes.length !== count) return Array(count).fill(null);
+  return round.visible_outcomes.map((value,i) =>
+    OFFICIAL_CODES.has(value) || (value === 'S' && i < count-1) ? value : null);
+}
+
 export function installSimulationParticipants(app,pool) {
+  const readActivePublished = `SELECT r.id,r.name,r.config,
+    COALESCE(x.published,FALSE) AS published,
+    CASE WHEN x.published=TRUE THEN x.outcomes ELSE NULL END AS visible_outcomes,
+    CASE WHEN x.published=TRUE THEN x.version ELSE NULL END AS published_version
+    FROM rounds r LEFT JOIN round_results x ON x.round_id=r.id
+    WHERE r.is_active=TRUE LIMIT 1`;
+
+  // No devuelve apuestas, teléfonos, pagos, ni resultados sin publicar.
+  app.get('/api/participant/simulated-results/official',async(_req,res,next)=>{
+    try {
+      const selected=await pool.query(readActivePublished);
+      if (!selected.rowCount) return res.status(503).json({error:'No hay jornada activa.'});
+      const round=selected.rows[0], cfg=round.config||{};
+      const count=Number(cfg.matchCount??cfg.teams?.length);
+      if (![10,11].includes(count)) return res.status(503).json({error:'Jornada mal configurada.'});
+      res.set('Cache-Control','no-store');
+      res.json({roundId:String(round.id),roundName:round.name,matchCount:count,
+        published:round.published===true,
+        lockedOutcomes:fixedPublishedOutcomes(round,count),
+        publishedVersion:round.published ? Number(round.published_version||0) : null});
+    }catch(err){next(err)}
+  });
+
   app.post('/api/participant/simulated-results',async(req,res,next) => {
     try {
-      const selected=await pool.query(`SELECT r.id,r.name,r.config,COALESCE(x.published,FALSE) AS published
-        FROM rounds r LEFT JOIN round_results x ON x.round_id=r.id
-        WHERE r.is_active=true LIMIT 1`);
+      const selected=await pool.query(readActivePublished);
       if (!selected.rowCount) return res.status(503).json({error:'No hay jornada activa.'});
       const round=selected.rows[0],cfg=round.config||{};
       const count=Number(cfg.matchCount??cfg.teams?.length);
       let outcomes;
       try {outcomes=validateParticipantSimulation(req.body?.outcomes,count)}
       catch(err) {return res.status(400).json({error:err.message})}
+      const fixed=fixedPublishedOutcomes(round,count);
+      // Incluso con una petición manual el participante no puede alterar
+      // un resultado publicado. 409 obliga a refrescar al cambiar la publicación.
+      for(let i=0;i<count;i++){
+        if(fixed[i]!==null && outcomes[i]!==fixed[i]){
+          res.set('Cache-Control','no-store');
+          return res.status(409).json({error:'Un resultado oficial publicado cambió. Actualiza el simulador para continuar.',officialChanged:true});
+        }
+      }
       const bets=await pool.query('SELECT folio,name,selections,created_at FROM bets WHERE round_id=$1 ORDER BY id',[round.id]);
       const result=scoreParticipantSimulations(outcomes,bets.rows,true);
       res.set('Cache-Control','no-store');

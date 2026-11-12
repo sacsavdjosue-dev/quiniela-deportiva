@@ -65,12 +65,14 @@ function update(){
     method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
     cache:'no-store',signal:controller.signal,body:JSON.stringify({outcomes})});
    const data=await response.json().catch(()=>{throw Error('Respuesta no válida del servidor.')});
+   // QUINIFUT_SIMULADOR_OFICIALES_FIJOS_V12: refrescar si hubo publicación.
+   if(response.status===409)document.dispatchEvent(new Event('sim:official-conflict'));
    if(!response.ok)throw Error(data.error||'No se pudieron calcular los resultados.');
    if(current!==requestNum)return;
    all=Array.isArray(data.rankings)?data.rankings:[];
    total=Number(data.scoredMatches||0);
    status.textContent=all.length
-    ?all.length+' quiniela(s) registradas · '+total+' encuentro(s) puntuados. Puntos según los resultados elegidos (no oficiales).'
+    ?all.length+' quiniela(s) registradas · '+total+' encuentro(s) puntuados. Escenario con resultados publicados fijos y partidos simulados (clasificación hipotética).'
     :'No hay quinielas registradas en la jornada activa.';
    draw(true);
   }catch(err){
