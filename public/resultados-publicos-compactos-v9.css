@@ -97,3 +97,23 @@
   }
   #matchesSection .pr-team {font-size:8.5px}
 }
+
+/* QUINIFUT_LOGOS_RESULTADOS_PUBLICOS_V10
+   Escudos originales de los equipos visibles en tabla compacta. */
+#matchesSection .pr-team .pr-team-logo {
+  display:block; width:15px; height:15px; flex:0 0 15px;
+  object-fit:contain; object-position:center;
+}
+#matchesSection .pr-team .pr-team-name {
+  min-width:0; overflow-wrap:anywhere;
+}
+@media(max-width:520px) {
+  #matchesSection .pr-team .pr-team-logo {
+    width:13px; height:13px; flex-basis:13px;
+  }
+}
+@media(max-width:355px) {
+  #matchesSection .pr-team .pr-team-logo {
+    width:12px; height:12px; flex-basis:12px;
+  }
+}

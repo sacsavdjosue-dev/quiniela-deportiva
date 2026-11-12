@@ -8,6 +8,13 @@ const OUTCOMES = new Set(['L', 'E', 'V']);
 const MAX_RESULTS_MATCHES = 11;
 const MAX_RANKING_COMBINATIONS_TO_SHOW = 12;
 
+// QUINIFUT_LOGOS_RESULTADOS_PUBLICOS_V10
+// Escudos existentes de la jornada; solo se permiten los formatos que acepta
+// la configuracion administrativa. No se inventan ni descargan otros logotipos.
+const safeTeamLogo = value =>
+  typeof value === 'string' && value.length < 160000 &&
+  /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value) ? value : '';
+
 const validRoundId = value => /^[1-9]\d*$/.test(String(value ?? '')) &&
   Number.isSafeInteger(Number(value)) ? Number(value) : null;
 
@@ -20,7 +27,8 @@ function roundInfo(row) {
   return {
     id: Number(row.id), name: row.name, active: Boolean(row.is_active),
     matchCount, teams: teams.slice(0, matchCount).map(t => ({
-      home: String(t.home || 'Local'), away: String(t.away || 'Visitante')
+      home: String(t.home || 'Local'), away: String(t.away || 'Visitante'),
+      homeLogo: safeTeamLogo(t.homeLogo), awayLogo: safeTeamLogo(t.awayLogo)
     }))
   };
 }

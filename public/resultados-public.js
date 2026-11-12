@@ -79,11 +79,29 @@ async function loadPublicResults(id){
     const row=make('div','','pr-result-row'+(wildcard?' pr-wild':''));
     row.setAttribute('aria-label',(wildcard?'Comodín':'Partido '+(i+1))+': '+match.home+
       ' contra '+match.away+', resultado: '+(outcomeNames[chosen]||'pendiente'));
+    // QUINIFUT_LOGOS_RESULTADOS_PUBLICOS_V10
+    // Se muestran los mismos escudos cargados para esta jornada en el panel de administracion.
+    // Solo se admiten imagenes base64 PNG/JPEG/WEBP; si no hay escudo, queda el nombre.
+    function teamLogo(value) {
+      if (typeof value !== 'string' || value.length >= 160000 ||
+          !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return null;
+      const image=document.createElement('img');
+      image.className='pr-team-logo';
+      image.src=value;
+      image.alt=''; // El nombre del equipo ya proporciona el texto accesible.
+      image.loading='lazy';
+      image.decoding='async';
+      return image;
+    }
     const home=make('div','','pr-team pr-team-home');
     if(wildcard)home.append(make('span','★','pr-wild-badge'));
-    home.append(make('span',match.home));
+    const homeImage=teamLogo(match.homeLogo);
+    if(homeImage)home.append(homeImage);
+    home.append(make('span',match.home,'pr-team-name'));
     const away=make('div','','pr-team pr-team-away');
-    away.append(make('span',match.away));
+    away.append(make('span',match.away,'pr-team-name'));
+    const awayImage=teamLogo(match.awayLogo);
+    if(awayImage)away.append(awayImage);
     row.append(mark('L',chosen,'pr-edge'),home,mark('E',chosen),away,
       mark('V',chosen,'pr-edge'),wildcard?make('span','','pr-no-suspend'):mark('S',chosen,'pr-suspend'));
     matches.append(row);
