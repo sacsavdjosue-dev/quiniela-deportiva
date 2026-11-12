@@ -31,13 +31,13 @@ select,input{max-width:100%;background:#f1f7f8;border:1px solid #849eaa;border-r
 </header>
 <div class="tabs" role="group" aria-label="Vista del simulador"><button id="tabSim" type="button" class="active" aria-pressed="true">🎯 Simular resultados</button><button id="tabLive" type="button" aria-pressed="false">📊 Clasificación en vivo</button></div>
 <section class="panel" id="simPanel">
-<h2>Simulador independiente</h2>
-<p class="muted">Marca tus propios pronósticos L / E / V (puedes elegir dobles o triples) y un resultado hipotético por partido. Nada se registra ni modifica en Supabase.</p>
+<h2>Simulador de resultados</h2>
+<p class="muted">Marca L (local), E (empate), V (visitante) o S (suspendido). La clasificación calculada con los folios guardados aparece debajo.</p>
 <p id="simRoundInfo" class="muted" role="status">Cargando jornada activa…</p>
 <div id="simMatches"></div>
 <div class="controls"><button id="randomSim" type="button" class="primary">RESULTADOS AL AZAR</button><button id="clearSim" type="button" class="secondary">BORRAR SIMULACIÓN</button></div>
 <div id="simScore" class="stat" role="status" aria-live="polite">Selecciona pronósticos y resultados para calcular aciertos.</div>
-<p class="muted">Este cálculo es personal e hipotético. No altera los marcadores oficiales ni la clasificación en vivo de otros participantes.</p>
+<p class="muted">Simulación hipotética: no modifica registros, pagos ni marcadores oficiales.</p>
 </section>
 <section class="panel hide" id="livePanel">
 <div class="leader-header"><div><h2>Clasificación de todas las quinielas</h2><span class="badge" id="liveBadge">EN VIVO · PROVISIONAL</span></div><div class="refresh"><button id="liveRefresh" type="button" class="primary">ACTUALIZAR</button></div></div>
@@ -52,5 +52,6 @@ select,input{max-width:100%;background:#f1f7f8;border:1px solid #849eaa;border-r
 </main>
 <script src="/simulador-en-vivo.js" defer></script>
 <script src="/simulation-participants.js" defer></script>
+<script src="/simulador-compacto-v6.js" defer></script>
 </body>
 </html>
