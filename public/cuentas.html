@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#102238">
+<title>Cuentas de banco | QUINIFUT</title>
+<style>
+:root{color-scheme:dark;--navy:#102238;--lime:#d5f235;--text:#f5f7fa;--muted:#b5cbd3}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:linear-gradient(140deg,#071a2b,#11534e);color:var(--text);font-family:system-ui,Arial,sans-serif}
+main{max-width:650px;padding:16px 12px 42px;margin:0 auto}
+header{background:linear-gradient(120deg,#102238,#0b6b59);border:1px solid #54727e;border-radius:13px;text-align:center;padding:23px 14px}
+.eyebrow{font-size:11px;letter-spacing:.14em;font-weight:850;color:var(--lime)}
+h1{font-size:clamp(23px,6vw,30px);margin:6px 0 10px}
+header p{margin:0;color:#d2e9e7;font-size:12px;line-height:1.6}
+a.back{display:inline-block;margin-top:14px;color:var(--lime);font-size:13px;font-weight:800;text-decoration:none}
+#bankStatus{font-size:13px;color:var(--muted);text-align:center;margin:18px auto;line-height:1.55}
+.bank-card{background:#102238;border:1px solid #587581;border-radius:13px;margin:14px 0;padding:16px 15px;box-shadow:0 8px 20px #0002}
+.bank-card h2{font-size:18px;color:var(--lime);margin:0 0 12px}
+.bank-field{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;border-top:1px solid #355467;padding:10px 0}
+.bank-field small{font-size:11px;color:#b9d2d8;display:block}
+.bank-field strong{display:block;font-size:14px;overflow-wrap:anywhere;margin-top:3px;letter-spacing:.02em}
+.bank-field button{background:#d5f235;color:#102238;border:0;border-radius:7px;padding:8px 10px;font-size:11px;font-weight:850;cursor:pointer}
+.bank-field button:focus-visible,a:focus-visible{outline:3px solid #ffad4d;outline-offset:2px}
+#copyStatus{font-size:12px;text-align:center;color:#d5f235;min-height:1.4em}
+.disclaimer{font-size:12px;color:#d5e8ed;line-height:1.6;background:#163a47;border-radius:9px;padding:13px;margin-top:13px}
+@media(max-width:450px){main{padding:8px 8px 25px}.bank-card{padding:12px 11px}.bank-field strong{font-size:12px;letter-spacing:0}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">QUINIFUT</div>
+<h1>🏦 CUENTAS DE BANCO</h1>
+<p>Consulta los datos bancarios publicados por la administración para realizar tu pago.</p>
+<a href="/" class="back">← VOLVER A LA QUINIELA</a>
+</header>
+<p id="bankStatus" role="status">Consultando cuentas disponibles…</p>
+<div id="bankAccountList"></div>
+<p id="copyStatus" role="status" aria-live="polite"></p>
+<div class="disclaimer">Verifica el banco y el titular antes de hacer una transferencia. El envío del pago no confirma automáticamente tu quiniela; su validación corresponde a la administración.</div>
+</main>
+<script src="/bank-accounts-public.js" defer></script>
+</body>
+</html>
