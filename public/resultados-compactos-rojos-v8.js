@@ -35,6 +35,17 @@
       font-size:10px;font-weight:750;line-height:1.08;overflow-wrap:anywhere;
     }
     #resultsManagementPanel .ar-team.ar-team-away {justify-content:flex-end;text-align:right}
+    /* QUINIFUT_LOGOS_ADMIN_RESULTADOS_V11 */
+    #resultsManagementPanel .ar-team img.ar-team-logo {
+      display:block; width:15px; height:15px; flex:0 0 15px;
+      object-fit:contain;object-position:center;
+    }
+    @media(max-width:520px){
+      #resultsManagementPanel .ar-team img.ar-team-logo {width:13px;height:13px;flex-basis:13px}
+    }
+    @media(max-width:355px){
+      #resultsManagementPanel .ar-team img.ar-team-logo {width:12px;height:12px;flex-basis:12px}
+    }
     #resultsManagementPanel .ar-wild-badge {font-size:9px;color:#00754e;flex-shrink:0}
     #resultsManagementPanel .ar-result-button {
       display:flex;align-items:center;justify-content:center;
@@ -97,9 +108,13 @@
     const awayName = separator < 0 ? 'Visitante' : label.slice(separator+4);
     const home = node('div','ar-team ar-team-home');
     if (wildcard) home.append(node('span','ar-wild-badge','★'));
+    const homeLogo = originalTitle.querySelector('img[data-ar-team-side="home"]');
+    if (homeLogo) home.append(homeLogo);
     home.append(node('span','',homeName));
     const away = node('div','ar-team ar-team-away');
     away.append(node('span','',awayName));
+    const awayLogo = originalTitle.querySelector('img[data-ar-team-side="away"]');
+    if (awayLogo) away.append(awayLogo);
     const group = [];
     function choice(code, extra='') {
       const button = node('button','ar-result-button '+extra,code);

@@ -113,6 +113,21 @@ async function loadSelectedResultsRound(id) {
 }
 
 function paintResultMatches(data) {
+  // QUINIFUT_LOGOS_ADMIN_RESULTADOS_V11
+  // Reutiliza las imagenes PNG/JPEG/WEBP ya configuradas para esta jornada.
+  const existingTeamLogo = (value, side) => {
+    if (typeof value !== 'string' || value.length >= 160000 ||
+        !/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return null;
+    const img = document.createElement('img');
+    img.className = 'ar-team-logo';
+    img.dataset.arTeamSide = side;
+    img.src = value;
+    img.alt = ''; // El nombre visible del equipo es el texto accesible.
+    img.loading = 'lazy';
+    img.decoding = 'async';
+    img.onerror = () => img.remove();
+    return img;
+  };
   const list = resultsEl('resultsMatchList');
   list.replaceChildren();
   data.round.teams.forEach((match, index) => {
@@ -120,6 +135,10 @@ function paintResultMatches(data) {
     const row = resultsText('div', '', 'results-match' + (wildcard ? ' results-wildcard' : ''));
     const title = resultsText('div', (wildcard ? '⭐ COMODÍN' : `Partido ${index + 1}`) +
       ' · ' + match.home + ' vs ' + match.away, 'results-team');
+    const homeLogo = existingTeamLogo(match.homeLogo, 'home');
+    const awayLogo = existingTeamLogo(match.awayLogo, 'away');
+    if (homeLogo) title.append(homeLogo);
+    if (awayLogo) title.append(awayLogo);
     const select = document.createElement('select');
     select.className = 'results-pick';
     select.dataset.resultIndex = String(index);
